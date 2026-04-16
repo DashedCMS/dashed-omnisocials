@@ -4,6 +4,7 @@ namespace Dashed\DashedOmnisocials;
 
 use Dashed\DashedMarketing\Managers\PublishingAdapterRegistry;
 use Dashed\DashedOmnisocials\Adapters\OmnisocialsPublishAdapter;
+use Dashed\DashedOmnisocials\Commands\RegisterWebhookCommand;
 use Dashed\DashedOmnisocials\Commands\SmokeTestCommand;
 use Dashed\DashedOmnisocials\Commands\SyncAccountsCommand;
 use Dashed\DashedOmnisocials\Filament\Pages\Settings\OmnisocialsSettingsPage;
@@ -22,6 +23,7 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
             ->hasCommands([
                 SyncAccountsCommand::class,
                 SmokeTestCommand::class,
+                RegisterWebhookCommand::class,
             ])
             ->name(self::$name);
     }
