@@ -31,11 +31,6 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
 
     public array $data = [];
 
-    public static function canAccess(): bool
-    {
-        return Customsetting::get('social_publishing_adapter') === 'omnisocials';
-    }
-
     public function mount(): void
     {
         $this->form->fill([
