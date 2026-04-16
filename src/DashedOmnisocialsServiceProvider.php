@@ -4,10 +4,12 @@ namespace Dashed\DashedOmnisocials;
 
 use Dashed\DashedMarketing\Managers\PublishingAdapterRegistry;
 use Dashed\DashedOmnisocials\Adapters\OmnisocialsPublishAdapter;
+use Dashed\DashedOmnisocials\Commands\RefreshAnalyticsCommand;
 use Dashed\DashedOmnisocials\Commands\RegisterWebhookCommand;
 use Dashed\DashedOmnisocials\Commands\SmokeTestCommand;
 use Dashed\DashedOmnisocials\Commands\SyncAccountsCommand;
 use Dashed\DashedOmnisocials\Filament\Pages\Settings\OmnisocialsSettingsPage;
+use Illuminate\Console\Scheduling\Schedule;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -24,6 +26,7 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
                 SyncAccountsCommand::class,
                 SmokeTestCommand::class,
                 RegisterWebhookCommand::class,
+                RefreshAnalyticsCommand::class,
             ])
             ->name(self::$name);
     }
@@ -31,6 +34,11 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
     public function bootingPackage(): void
     {
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+
+        $this->app->booted(function () {
+            $schedule = $this->app->make(Schedule::class);
+            $schedule->command('dashed-omnisocials:refresh-analytics')->dailyAt('03:00');
+        });
 
         PublishingAdapterRegistry::register('omnisocials', OmnisocialsPublishAdapter::class, 'Omnisocials');
 
