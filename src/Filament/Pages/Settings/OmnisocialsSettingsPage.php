@@ -102,11 +102,16 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
             ->color('warning')
             ->action(function () {
                 try {
-                    (new RegisterOmnisocialsWebhookJob())->handle();
+                    $job = new RegisterOmnisocialsWebhookJob();
+                    $job->handle();
+
+                    $body = $job->results === []
+                        ? 'Geen sites verwerkt.'
+                        : implode("\n", $job->results);
 
                     Notification::make()
-                        ->title('Webhook geregistreerd')
-                        ->body('Controleer de log voor details per site.')
+                        ->title('Webhook registratie voltooid')
+                        ->body($body)
                         ->success()
                         ->send();
                 } catch (\Throwable $e) {

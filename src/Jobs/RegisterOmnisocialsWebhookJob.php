@@ -30,6 +30,8 @@ class RegisterOmnisocialsWebhookJob implements ShouldQueue
     {
     }
 
+    public array $results = [];
+
     public function handle(): void
     {
         $webhookUrl = route('omnisocials.webhook');
@@ -39,21 +41,26 @@ class RegisterOmnisocialsWebhookJob implements ShouldQueue
             $client = new OmnisocialsClient($siteId);
 
             if (! $client->isConfigured()) {
+                $this->results[] = "{$siteId}: overgeslagen (geen API key)";
+
                 continue;
             }
 
             try {
-                $this->registerForSite($client, $siteId, $webhookUrl);
+                $status = $this->registerForSite($client, $siteId, $webhookUrl);
+                $this->results[] = "{$siteId}: {$status}";
             } catch (\Throwable $e) {
                 Log::error('Omnisocials webhook registration failed', [
                     'site_id' => $siteId,
                     'error' => $e->getMessage(),
                 ]);
+
+                $this->results[] = "{$siteId}: fout - {$e->getMessage()}";
             }
         }
     }
 
-    private function registerForSite(OmnisocialsClient $client, string $siteId, string $webhookUrl): void
+    private function registerForSite(OmnisocialsClient $client, string $siteId, string $webhookUrl): string
     {
         $existingWebhooks = $client->getWebhooks();
         $webhookList = $existingWebhooks['data'] ?? $existingWebhooks;
@@ -74,20 +81,24 @@ class RegisterOmnisocialsWebhookJob implements ShouldQueue
                 'site_id' => $siteId,
                 'webhook_id' => $webhookId,
             ]);
-        } else {
-            $response = $client->createWebhook([
-                'url' => $webhookUrl,
-                'events' => self::SUBSCRIBED_EVENTS,
-            ]);
 
-            if (isset($response['secret'])) {
-                Customsetting::set('omnisocials_webhook_secret', $response['secret'], $siteId);
-            }
-
-            Log::info('Omnisocials webhook created', [
-                'site_id' => $siteId,
-                'webhook_id' => $response['id'] ?? null,
-            ]);
+            return 'bijgewerkt';
         }
+
+        $response = $client->createWebhook([
+            'url' => $webhookUrl,
+            'events' => self::SUBSCRIBED_EVENTS,
+        ]);
+
+        if (isset($response['secret'])) {
+            Customsetting::set('omnisocials_webhook_secret', $response['secret'], $siteId);
+        }
+
+        Log::info('Omnisocials webhook created', [
+            'site_id' => $siteId,
+            'webhook_id' => $response['id'] ?? null,
+        ]);
+
+        return 'aangemaakt';
     }
 }
