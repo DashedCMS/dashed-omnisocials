@@ -2,17 +2,17 @@
 
 namespace Dashed\DashedOmnisocials\Jobs;
 
+use Illuminate\Bus\Queueable;
+use Illuminate\Support\Facades\Log;
 use Dashed\DashedCore\Classes\Sites;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Queue\InteractsWithQueue;
 use Dashed\DashedCore\Models\Customsetting;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Dashed\DashedMarketing\Models\SocialChannel;
 use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
 use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class SyncOmnisocialsAccountsJob implements ShouldQueue
 {

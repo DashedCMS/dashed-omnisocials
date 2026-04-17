@@ -2,8 +2,8 @@
 
 namespace Dashed\DashedOmnisocials\Commands;
 
-use Dashed\DashedOmnisocials\Jobs\RegisterOmnisocialsWebhookJob;
 use Illuminate\Console\Command;
+use Dashed\DashedOmnisocials\Jobs\RegisterOmnisocialsWebhookJob;
 
 class RegisterWebhookCommand extends Command
 {

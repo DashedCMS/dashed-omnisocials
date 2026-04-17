@@ -2,9 +2,9 @@
 
 namespace Dashed\DashedOmnisocials;
 
-use Dashed\DashedOmnisocials\Filament\Pages\Settings\OmnisocialsSettingsPage;
-use Filament\Contracts\Plugin;
 use Filament\Panel;
+use Filament\Contracts\Plugin;
+use Dashed\DashedOmnisocials\Filament\Pages\Settings\OmnisocialsSettingsPage;
 
 class DashedOmnisocialsPlugin implements Plugin
 {

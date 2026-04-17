@@ -2,8 +2,8 @@
 
 namespace Dashed\DashedOmnisocials\Commands;
 
-use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
 use Illuminate\Console\Command;
+use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
 
 class SmokeTestCommand extends Command
 {

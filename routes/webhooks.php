@@ -1,8 +1,8 @@
 <?php
 
-use Dashed\DashedOmnisocials\Http\Controllers\HandleOmnisocialsWebhookController;
-use Dashed\DashedOmnisocials\Http\Middleware\VerifyOmnisocialsSignature;
 use Illuminate\Support\Facades\Route;
+use Dashed\DashedOmnisocials\Http\Middleware\VerifyOmnisocialsSignature;
+use Dashed\DashedOmnisocials\Http\Controllers\HandleOmnisocialsWebhookController;
 
 Route::post('/dashed/omnisocials/webhook', [HandleOmnisocialsWebhookController::class, 'handle'])
     ->middleware(VerifyOmnisocialsSignature::class)

@@ -2,8 +2,8 @@
 
 namespace Dashed\DashedOmnisocials\Commands;
 
-use Dashed\DashedOmnisocials\Jobs\SyncOmnisocialsAccountsJob;
 use Illuminate\Console\Command;
+use Dashed\DashedOmnisocials\Jobs\SyncOmnisocialsAccountsJob;
 
 class SyncAccountsCommand extends Command
 {

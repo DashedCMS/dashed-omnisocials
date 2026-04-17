@@ -3,8 +3,8 @@
 namespace Dashed\DashedOmnisocials\Http\Middleware;
 
 use Closure;
-use Dashed\DashedCore\Models\Customsetting;
 use Illuminate\Http\Request;
+use Dashed\DashedCore\Models\Customsetting;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifyOmnisocialsSignature

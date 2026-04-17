@@ -2,8 +2,8 @@
 
 namespace Dashed\DashedOmnisocials\Commands;
 
-use Dashed\DashedOmnisocials\Jobs\RefreshAnalyticsJob;
 use Illuminate\Console\Command;
+use Dashed\DashedOmnisocials\Jobs\RefreshAnalyticsJob;
 
 class RefreshAnalyticsCommand extends Command
 {

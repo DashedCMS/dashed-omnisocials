@@ -2,15 +2,15 @@
 
 namespace Dashed\DashedOmnisocials\Adapters;
 
-use Dashed\DashedMarketing\Contracts\PublishingAdapter;
+use Illuminate\Support\Facades\Log;
 use Dashed\DashedMarketing\DTOs\PostStatus;
+use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedMarketing\DTOs\PublishResult;
 use Dashed\DashedMarketing\Models\SocialChannel;
-use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
+use Dashed\DashedMarketing\Contracts\PublishingAdapter;
 use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
-use Illuminate\Support\Facades\Log;
+use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 
 class OmnisocialsPublishAdapter implements PublishingAdapter
 {
@@ -47,16 +47,19 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
         foreach ($channels as $channel) {
             if (ChannelPlatformMapper::isUnsupported($channel->slug)) {
                 $unsupported[] = $channel->slug;
+
                 continue;
             }
 
             if (! ChannelPlatformMapper::isSupported($channel->slug)) {
                 $unsupported[] = $channel->slug;
+
                 continue;
             }
 
             if (! $channel->omnisocials_account_id) {
                 $missingAccount[] = $channel->slug;
+
                 continue;
             }
 
@@ -239,6 +242,7 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
         foreach ($mediaIds as $id) {
             if ($id) {
                 $defaultMediaId = $id;
+
                 break;
             }
         }

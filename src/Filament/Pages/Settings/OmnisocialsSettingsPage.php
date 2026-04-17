@@ -2,21 +2,21 @@
 
 namespace Dashed\DashedOmnisocials\Filament\Pages\Settings;
 
-use Dashed\DashedCore\Classes\Sites;
-use Dashed\DashedCore\Models\Customsetting;
-use Dashed\DashedCore\Traits\HasSettingsPermission;
-use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedOmnisocials\Jobs\RegisterOmnisocialsWebhookJob;
-use Dashed\DashedOmnisocials\Jobs\SyncOmnisocialsAccountsJob;
+use Filament\Pages\Page;
 use Filament\Actions\Action;
+use Filament\Schemas\Schema;
+use Dashed\DashedCore\Classes\Sites;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Contracts\HasSchemas;
+use Dashed\DashedCore\Models\Customsetting;
+use Dashed\DashedCore\Traits\HasSettingsPermission;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
-use Filament\Schemas\Schema;
+use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
+use Dashed\DashedOmnisocials\Jobs\SyncOmnisocialsAccountsJob;
+use Dashed\DashedOmnisocials\Jobs\RegisterOmnisocialsWebhookJob;
 
 class OmnisocialsSettingsPage extends Page implements HasSchemas
 {
@@ -101,13 +101,21 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
             ->icon('heroicon-o-globe-alt')
             ->color('warning')
             ->action(function () {
-                RegisterOmnisocialsWebhookJob::dispatch();
+                try {
+                    (new RegisterOmnisocialsWebhookJob())->handle();
 
-                Notification::make()
-                    ->title('Webhook registratie gestart')
-                    ->body('De webhook wordt op de achtergrond geregistreerd.')
-                    ->success()
-                    ->send();
+                    Notification::make()
+                        ->title('Webhook geregistreerd')
+                        ->body('Controleer de log voor details per site.')
+                        ->success()
+                        ->send();
+                } catch (\Throwable $e) {
+                    Notification::make()
+                        ->title('Webhook registratie mislukt')
+                        ->body($e->getMessage())
+                        ->danger()
+                        ->send();
+                }
             });
     }
 

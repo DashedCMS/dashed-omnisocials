@@ -2,10 +2,10 @@
 
 namespace Dashed\DashedOmnisocials\Http\Controllers;
 
-use Dashed\DashedOmnisocials\Jobs\ProcessOmnisocialsWebhookJob;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Dashed\DashedOmnisocials\Jobs\ProcessOmnisocialsWebhookJob;
 
 class HandleOmnisocialsWebhookController extends Controller
 {
