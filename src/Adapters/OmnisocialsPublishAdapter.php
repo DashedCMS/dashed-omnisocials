@@ -93,26 +93,18 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
         }
 
         try {
-            // Upload media
-            $mediaIds = $this->uploadMedia($client, $post, $accounts);
-
-            // Build content object with per-platform overrides
             $content = $this->buildContent($post, $accounts);
-
-            // Build media object with per-platform overrides
-            $media = $this->buildMedia($mediaIds, $post, $accounts);
-
-            // Build social accounts array
-            $socialAccounts = array_map(fn (array $a) => [
-                'id' => $a['account_id'],
-                'platform' => $a['platform'],
-            ], $accounts);
+            $mediaUrls = $this->buildMediaUrls($post, $accounts);
+            $accountIds = array_map(fn (array $a) => $a['account_id'], $accounts);
 
             $payload = [
-                'social_accounts' => $socialAccounts,
+                'accounts' => $accountIds,
                 'content' => $content,
-                'media' => $media,
             ];
+
+            if (! empty($mediaUrls)) {
+                $payload['media_urls'] = $mediaUrls;
+            }
 
             // Immediate publish or scheduled
             if ($post->scheduled_at && $post->scheduled_at->isFuture()) {
@@ -180,38 +172,47 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
         return ChannelPlatformMapper::isSupported($platform);
     }
 
-    private function uploadMedia(OmnisocialsClient $client, SocialPost $post, array $accounts): array
+    private function buildMediaUrls(SocialPost $post, array $accounts): array
     {
         $ratioImages = $post->ratio_images ?? [];
         $defaultImages = $post->images ?? [];
-        $mediaIds = [];
+        $defaultUrl = $this->toAbsoluteUrl($defaultImages[0] ?? ($ratioImages['1:1'] ?? null));
 
-        // Collect unique image URLs needed per ratio
-        $urlsToUpload = [];
+        if (! $defaultUrl && empty($ratioImages)) {
+            return [];
+        }
+
+        $media = [];
+
+        if ($defaultUrl) {
+            $media['default'] = [$defaultUrl];
+        }
 
         foreach ($accounts as $account) {
-            $ratio = ChannelPlatformMapper::defaultRatio($account['channel']->slug);
-            $imageUrl = $ratioImages[$ratio] ?? $ratioImages['1:1'] ?? ($defaultImages[0] ?? null);
+            $slug = $account['channel']->slug;
+            $platform = $account['platform'];
+            $ratio = ChannelPlatformMapper::defaultRatio($slug);
+            $platformUrl = $this->toAbsoluteUrl($ratioImages[$ratio] ?? null);
 
-            if ($imageUrl && ! isset($urlsToUpload[$imageUrl])) {
-                $urlsToUpload[$imageUrl] = null;
+            if ($platformUrl && $platformUrl !== $defaultUrl) {
+                $media[$platform] = [$platformUrl];
             }
         }
 
-        // Upload each unique URL
-        foreach ($urlsToUpload as $url => $unused) {
-            $result = $client->uploadMediaFromUrl($url);
-            $urlsToUpload[$url] = $result['id'] ?? $result['media_id'] ?? null;
+        return $media;
+    }
+
+    private function toAbsoluteUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
         }
 
-        // Map accounts to their media IDs
-        foreach ($accounts as $account) {
-            $ratio = ChannelPlatformMapper::defaultRatio($account['channel']->slug);
-            $imageUrl = $ratioImages[$ratio] ?? $ratioImages['1:1'] ?? ($defaultImages[0] ?? null);
-            $mediaIds[$account['channel']->slug] = $imageUrl ? $urlsToUpload[$imageUrl] : null;
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
         }
 
-        return $mediaIds;
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($path);
     }
 
     private function buildContent(SocialPost $post, array $accounts): array
@@ -238,37 +239,4 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
         return $content;
     }
 
-    private function buildMedia(array $mediaIds, SocialPost $post, array $accounts): array
-    {
-        $defaultMediaId = null;
-        $media = [];
-
-        // Find the first available media ID as default
-        foreach ($mediaIds as $id) {
-            if ($id) {
-                $defaultMediaId = $id;
-
-                break;
-            }
-        }
-
-        if (! $defaultMediaId) {
-            return [];
-        }
-
-        $media['default'] = [$defaultMediaId];
-
-        // Add per-platform overrides where media differs from default
-        foreach ($accounts as $account) {
-            $slug = $account['channel']->slug;
-            $platform = $account['platform'];
-            $id = $mediaIds[$slug] ?? null;
-
-            if ($id && $id !== $defaultMediaId) {
-                $media[$platform] = [$id];
-            }
-        }
-
-        return $media;
-    }
 }

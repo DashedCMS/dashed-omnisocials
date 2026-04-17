@@ -32,17 +32,17 @@ class OmnisocialsClient
 
     public function uploadMediaFromUrl(string $url): array
     {
-        return $this->post('/media/from-url', ['url' => $url]);
+        return $this->post('/media/upload-from-url', ['url' => $url]);
     }
 
     public function createPost(array $payload): array
     {
-        return $this->post('/posts', $payload);
+        return $this->post('/posts/create', $payload);
     }
 
     public function publishPost(array $payload): array
     {
-        return $this->post('/posts/publish', $payload);
+        return $this->post('/posts/create-and-publish', $payload);
     }
 
     public function retryFailedPlatforms(string $postId): array
