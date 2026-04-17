@@ -221,9 +221,10 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
     {
         $channelCaptions = $post->channel_captions ?? [];
         $defaultCaption = $post->caption ?? '';
+        $hashtags = $post->hashtags ?? [];
         $usePerChannel = (bool) ($post->captions_per_channel ?? false);
 
-        $content = ['default' => $defaultCaption];
+        $content = ['default' => $this->appendHashtags($defaultCaption, $hashtags)];
 
         if (! $usePerChannel) {
             return $content;
@@ -234,11 +235,30 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
             $platform = $account['platform'];
 
             if (isset($channelCaptions[$slug]) && $channelCaptions[$slug] !== $defaultCaption) {
-                $content[$platform] = $channelCaptions[$slug];
+                $content[$platform] = $this->appendHashtags($channelCaptions[$slug], $hashtags);
             }
         }
 
         return $content;
     }
 
+    private function appendHashtags(string $caption, array $hashtags): string
+    {
+        $tags = array_filter(array_map(function ($tag) {
+            $tag = trim((string) $tag);
+            if ($tag === '') {
+                return null;
+            }
+
+            return str_starts_with($tag, '#') ? $tag : '#' . ltrim($tag, '#');
+        }, $hashtags));
+
+        if (empty($tags)) {
+            return $caption;
+        }
+
+        $tagLine = implode(' ', $tags);
+
+        return $caption === '' ? $tagLine : rtrim($caption) . "\n\n" . $tagLine;
+    }
 }
