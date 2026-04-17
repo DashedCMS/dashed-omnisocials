@@ -114,7 +114,9 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
                 $result = $client->publishPost($payload);
             }
 
-            $externalId = $result['id'] ?? $result['post_id'] ?? null;
+            $data = $result['data'] ?? $result;
+            $externalId = $data['id'] ?? $data['post_id'] ?? null;
+            $externalUrl = $data['url'] ?? ($data['published_urls'][0] ?? null);
 
             $post->update([
                 'external_id' => $externalId,
@@ -124,7 +126,7 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
             return new PublishResult(
                 success: true,
                 externalId: $externalId,
-                externalUrl: $result['url'] ?? null,
+                externalUrl: $externalUrl,
             );
         } catch (OmnisocialsApiException $e) {
             Log::error('Omnisocials publish failed', [
