@@ -218,8 +218,13 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
     {
         $channelCaptions = $post->channel_captions ?? [];
         $defaultCaption = $post->caption ?? '';
+        $usePerChannel = (bool) ($post->captions_per_channel ?? false);
 
         $content = ['default' => $defaultCaption];
+
+        if (! $usePerChannel) {
+            return $content;
+        }
 
         foreach ($accounts as $account) {
             $slug = $account['channel']->slug;
