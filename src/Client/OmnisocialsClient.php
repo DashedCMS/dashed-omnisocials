@@ -2,11 +2,12 @@
 
 namespace Dashed\DashedOmnisocials\Client;
 
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Http\Client\PendingRequest;
 use Dashed\DashedCore\Models\Customsetting;
 use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 
 class OmnisocialsClient
 {
@@ -55,6 +56,11 @@ class OmnisocialsClient
         return $this->get("/analytics/posts/{$postId}");
     }
 
+    public function getPost(string $postId): array
+    {
+        return $this->get("/posts/{$postId}");
+    }
+
     public function getWebhooks(): array
     {
         return $this->get('/webhooks');
@@ -77,7 +83,7 @@ class OmnisocialsClient
             ->acceptJson()
             ->timeout(30)
             ->retry(3, function (int $attempt, \Throwable $exception) {
-                if ($exception instanceof \Illuminate\Http\Client\RequestException) {
+                if ($exception instanceof RequestException) {
                     $response = $exception->response;
 
                     if ($response->status() === 429) {
