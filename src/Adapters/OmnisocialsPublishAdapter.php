@@ -2,15 +2,16 @@
 
 namespace Dashed\DashedOmnisocials\Adapters;
 
-use Illuminate\Support\Facades\Log;
+use Dashed\DashedMarketing\Contracts\PublishingAdapter;
 use Dashed\DashedMarketing\DTOs\PostStatus;
-use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedMarketing\DTOs\PublishResult;
 use Dashed\DashedMarketing\Models\SocialChannel;
+use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedMarketing\Contracts\PublishingAdapter;
-use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
 use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
+use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class OmnisocialsPublishAdapter implements PublishingAdapter
 {
@@ -74,14 +75,14 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
         if (! empty($unsupported)) {
             return new PublishResult(
                 success: false,
-                error: 'Niet ondersteunde kanalen: ' . implode(', ', $unsupported),
+                error: 'Niet ondersteunde kanalen: '.implode(', ', $unsupported),
             );
         }
 
         if (! empty($missingAccount)) {
             return new PublishResult(
                 success: false,
-                error: 'Omnisocials account ontbreekt voor kanalen: ' . implode(', ', $missingAccount),
+                error: 'Omnisocials account ontbreekt voor kanalen: '.implode(', ', $missingAccount),
             );
         }
 
@@ -116,12 +117,19 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
 
             $data = $result['data'] ?? $result;
             $externalId = $data['id'] ?? $data['post_id'] ?? null;
-            $externalUrl = $data['url'] ?? ($data['published_urls'][0] ?? null);
+            $publishedUrls = $this->normalizePublishedUrls($data['published_urls'] ?? []);
+            $externalUrl = $data['url'] ?? (reset($publishedUrls) ?: null);
 
-            $post->update([
+            $update = [
                 'external_id' => $externalId,
                 'external_data' => $result,
-            ]);
+            ];
+
+            if (! empty($publishedUrls)) {
+                $update['published_urls'] = $publishedUrls;
+            }
+
+            $post->update($update);
 
             return new PublishResult(
                 success: true,
@@ -147,7 +155,7 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
 
             return new PublishResult(
                 success: false,
-                error: 'Onverwachte fout: ' . $e->getMessage(),
+                error: 'Onverwachte fout: '.$e->getMessage(),
             );
         }
     }
@@ -214,7 +222,7 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
             return $path;
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+        return Storage::disk('public')->url($path);
     }
 
     private function buildContent(SocialPost $post, array $accounts): array
@@ -250,7 +258,7 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
                 return null;
             }
 
-            return str_starts_with($tag, '#') ? $tag : '#' . ltrim($tag, '#');
+            return str_starts_with($tag, '#') ? $tag : '#'.ltrim($tag, '#');
         }, $hashtags));
 
         if (empty($tags)) {
@@ -259,6 +267,30 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
 
         $tagLine = implode(' ', $tags);
 
-        return $caption === '' ? $tagLine : rtrim($caption) . "\n\n" . $tagLine;
+        return $caption === '' ? $tagLine : rtrim($caption)."\n\n".$tagLine;
+    }
+
+    private function normalizePublishedUrls(mixed $raw): array
+    {
+        if (! is_array($raw) || empty($raw)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($raw as $key => $value) {
+            $url = match (true) {
+                is_string($value) => $value,
+                is_array($value) && isset($value['url']) => (string) $value['url'],
+                is_array($value) && isset($value[0]) && is_array($value[0]) && isset($value[0]['url']) => (string) $value[0]['url'],
+                default => null,
+            };
+
+            if ($url !== null && $url !== '') {
+                $normalized[(string) $key] = $url;
+            }
+        }
+
+        return $normalized;
     }
 }

@@ -6,6 +6,7 @@ use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
 use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 use Dashed\DashedOmnisocials\Jobs\RetryFailedPlatformsJob;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class SocialPostStatusSyncer
@@ -33,12 +34,13 @@ class SocialPostStatusSyncer
         $data = $response['data'] ?? $response;
         $externalStatus = $data['status'] ?? null;
         $errors = $data['errors'] ?? [];
-        $publishedUrls = $data['published_urls'] ?? [];
+        $publishedUrls = $this->normalizePublishedUrls($data['published_urls'] ?? []);
 
         $result = match ($externalStatus) {
             'posted' => $this->applyPosted($post, $data, $errors, $publishedUrls),
             'failed' => $this->applyFailed($post, $data),
-            'scheduled', 'draft' => 'noop:pending',
+            'scheduled' => $this->applyScheduled($post, $data),
+            'draft' => 'noop:pending',
             default => $this->applyUnknown($post, $externalStatus, $data),
         };
 
@@ -52,7 +54,7 @@ class SocialPostStatusSyncer
         if (! empty($errors)) {
             $failedPlatforms = array_keys($errors);
 
-            $post->update([
+            $update = [
                 'status' => 'partially_posted',
                 'posted_at' => $post->posted_at ?? now(),
                 'post_url' => $post->post_url ?? $this->firstUrl($publishedUrls),
@@ -60,7 +62,13 @@ class SocialPostStatusSyncer
                 'external_data' => array_merge($post->external_data ?? [], [
                     'last_sync_payload' => $data,
                 ]),
-            ]);
+            ];
+
+            if (! empty($publishedUrls)) {
+                $update['published_urls'] = $publishedUrls;
+            }
+
+            $post->update($update);
 
             RetryFailedPlatformsJob::dispatch($post)->delay(now()->addMinute());
 
@@ -73,18 +81,47 @@ class SocialPostStatusSyncer
             return 'noop:already-posted';
         }
 
-        $post->update([
+        $update = [
             'status' => 'posted',
             'posted_at' => $post->posted_at ?? now(),
             'post_url' => $post->post_url ?? $this->firstUrl($publishedUrls),
             'external_data' => array_merge($post->external_data ?? [], [
                 'last_sync_payload' => $data,
             ]),
-        ]);
+        ];
+
+        if (! empty($publishedUrls)) {
+            $update['published_urls'] = $publishedUrls;
+        }
+
+        $post->update($update);
 
         Log::info("[omnisocials:sync] post #{$post->id} marked posted");
 
         return 'updated:posted';
+    }
+
+    private function applyScheduled(SocialPost $post, array $data): string
+    {
+        $scheduleAt = $data['schedule_at'] ?? $data['scheduled_at'] ?? null;
+        $update = [
+            'status' => 'scheduled',
+            'external_data' => array_merge($post->external_data ?? [], [
+                'last_sync_payload' => $data,
+            ]),
+        ];
+
+        if ($scheduleAt) {
+            try {
+                $update['scheduled_at'] = Carbon::parse($scheduleAt);
+            } catch (\Throwable $e) {
+                Log::warning("[omnisocials:sync] post #{$post->id} invalid schedule_at", ['value' => $scheduleAt]);
+            }
+        }
+
+        $post->update($update);
+
+        return 'updated:scheduled';
     }
 
     private function applyFailed(SocialPost $post, array $data): string
@@ -128,10 +165,30 @@ class SocialPostStatusSyncer
 
         $first = reset($publishedUrls);
 
-        if (is_array($first)) {
-            return $first['url'] ?? null;
+        return is_string($first) ? $first : null;
+    }
+
+    private function normalizePublishedUrls(mixed $raw): array
+    {
+        if (! is_array($raw) || empty($raw)) {
+            return [];
         }
 
-        return is_string($first) ? $first : null;
+        $normalized = [];
+
+        foreach ($raw as $key => $value) {
+            $url = match (true) {
+                is_string($value) => $value,
+                is_array($value) && isset($value['url']) => (string) $value['url'],
+                is_array($value) && isset($value[0]) && is_array($value[0]) && isset($value[0]['url']) => (string) $value[0]['url'],
+                default => null,
+            };
+
+            if ($url !== null && $url !== '') {
+                $normalized[(string) $key] = $url;
+            }
+        }
+
+        return $normalized;
     }
 }
