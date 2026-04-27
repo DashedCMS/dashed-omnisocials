@@ -57,6 +57,7 @@ class SocialPostStatusSyncer
             $update = [
                 'status' => 'partially_posted',
                 'posted_at' => $post->posted_at ?? now(),
+                'posted_at_per_channel' => $this->buildPostedAtPerChannel($post, $failedPlatforms),
                 'post_url' => $post->post_url ?? $this->firstUrl($publishedUrls),
                 'failed_platforms' => $failedPlatforms,
                 'external_data' => array_merge($post->external_data ?? [], [
@@ -84,6 +85,7 @@ class SocialPostStatusSyncer
         $update = [
             'status' => 'posted',
             'posted_at' => $post->posted_at ?? now(),
+            'posted_at_per_channel' => $this->buildPostedAtPerChannel($post, []),
             'post_url' => $post->post_url ?? $this->firstUrl($publishedUrls),
             'external_data' => array_merge($post->external_data ?? [], [
                 'last_sync_payload' => $data,
@@ -99,6 +101,24 @@ class SocialPostStatusSyncer
         Log::info("[omnisocials:sync] post #{$post->id} marked posted");
 
         return 'updated:posted';
+    }
+
+    private function buildPostedAtPerChannel(SocialPost $post, array $failedPlatforms): array
+    {
+        $existing = is_array($post->posted_at_per_channel) ? $post->posted_at_per_channel : [];
+        $channels = is_array($post->channels) ? $post->channels : [];
+        $now = now()->toIso8601String();
+
+        foreach ($channels as $slug) {
+            if (in_array($slug, $failedPlatforms, true)) {
+                continue;
+            }
+            if (empty($existing[$slug])) {
+                $existing[$slug] = $now;
+            }
+        }
+
+        return $existing;
     }
 
     private function applyScheduled(SocialPost $post, array $data): string
