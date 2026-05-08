@@ -2,12 +2,12 @@
 
 namespace Dashed\DashedOmnisocials\Services;
 
-use Dashed\DashedMarketing\Models\SocialPost;
-use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
-use Dashed\DashedOmnisocials\Jobs\RetryFailedPlatformsJob;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Dashed\DashedMarketing\Models\SocialPost;
+use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
+use Dashed\DashedOmnisocials\Jobs\RetryFailedPlatformsJob;
+use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 
 class SocialPostStatusSyncer
 {
@@ -36,11 +36,16 @@ class SocialPostStatusSyncer
         $errors = $data['errors'] ?? [];
         $publishedUrls = $this->normalizePublishedUrls($data['published_urls'] ?? []);
 
+        // Omnisocials gebruikt 'published'/'completed' voor een succesvolle
+        // post; 'posting'/'processing'/'pending' zijn transient states die
+        // we behandelen als 'nog wachten' (we polling-en gewoon door bij de
+        // volgende run). 'posted' staat hier ook in voor de zekerheid mocht
+        // de API in de toekomst die alias gebruiken.
         $result = match ($externalStatus) {
-            'posted' => $this->applyPosted($post, $data, $errors, $publishedUrls),
+            'published', 'completed', 'posted' => $this->applyPosted($post, $data, $errors, $publishedUrls),
             'failed' => $this->applyFailed($post, $data),
             'scheduled' => $this->applyScheduled($post, $data),
-            'draft' => 'noop:pending',
+            'draft', 'pending', 'processing', 'posting' => 'noop:pending',
             default => $this->applyUnknown($post, $externalStatus, $data),
         };
 
@@ -51,6 +56,14 @@ class SocialPostStatusSyncer
 
     private function applyPosted(SocialPost $post, array $data, array $errors, array $publishedUrls): string
     {
+        // Top-level `url` in Omnisocials payload is meestal de gepubliceerde
+        // post-URL voor single-channel posts; voor multi-channel komt 'm uit
+        // published_urls. Existing post_url heeft altijd voorrang zodat we
+        // een door admin handmatig gezette waarde niet overschrijven.
+        $resolvedUrl = $post->post_url
+            ?? (is_string($data['url'] ?? null) && $data['url'] !== '' ? $data['url'] : null)
+            ?? $this->firstUrl($publishedUrls);
+
         if (! empty($errors)) {
             $failedPlatforms = array_keys($errors);
 
@@ -58,7 +71,7 @@ class SocialPostStatusSyncer
                 'status' => 'partially_posted',
                 'posted_at' => $post->posted_at ?? now(),
                 'posted_at_per_channel' => $this->buildPostedAtPerChannel($post, $failedPlatforms),
-                'post_url' => $post->post_url ?? $this->firstUrl($publishedUrls),
+                'post_url' => $resolvedUrl,
                 'failed_platforms' => $failedPlatforms,
                 'external_data' => array_merge($post->external_data ?? [], [
                     'last_sync_payload' => $data,
@@ -86,7 +99,7 @@ class SocialPostStatusSyncer
             'status' => 'posted',
             'posted_at' => $post->posted_at ?? now(),
             'posted_at_per_channel' => $this->buildPostedAtPerChannel($post, []),
-            'post_url' => $post->post_url ?? $this->firstUrl($publishedUrls),
+            'post_url' => $resolvedUrl,
             'external_data' => array_merge($post->external_data ?? [], [
                 'last_sync_payload' => $data,
             ]),
