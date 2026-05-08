@@ -2,6 +2,15 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.1.5 - 2026-05-08
+
+### Changed
+- Defensieve URL-extractie in `SocialPostStatusSyncer::applyPosted()`. Naast `data.published_urls` worden nu ook `data.urls` en URLs in `data.accounts` (zowel array-of-objects, dict-per-platform, als directe URL-strings per platform) meegenomen. Single-channel `data.url` blijft de laatste fallback.
+- Wanneer een post `published`/`completed` is maar geen URL kan worden gevonden in een herkende vorm, logt de syncer nu de top-level keys, accounts shape en raw `published_urls`/`urls` zodat we direct kunnen zien waar Omnisocials de URL plaatst zonder de hele payload terug te halen.
+
+### Added
+- `--dump-payload` flag op `php artisan dashed-omnisocials:sync-post-statuses` print per gesynced post de status, top-level keys, `published_urls`, `urls`, een sample van de `accounts`-structuur en de uiteindelijke `post_url`. Bedoeld voor debugging op productie.
+
 ## v4.1.4 - 2026-05-08
 
 ### Changed

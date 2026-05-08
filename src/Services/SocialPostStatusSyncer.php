@@ -56,13 +56,36 @@ class SocialPostStatusSyncer
 
     private function applyPosted(SocialPost $post, array $data, array $errors, array $publishedUrls): string
     {
-        // Top-level `url` in Omnisocials payload is meestal de gepubliceerde
-        // post-URL voor single-channel posts; voor multi-channel komt 'm uit
-        // published_urls. Existing post_url heeft altijd voorrang zodat we
-        // een door admin handmatig gezette waarde niet overschrijven.
+        // Probeer URLs uit alle bekende plekken te halen waar Omnisocials ze
+        // mogelijk levert. Bij verschillende account-types ziet de payload
+        // er anders uit; we vallen achtereenvolgens terug op:
+        //   1. data.published_urls (already normalized hierboven)
+        //   2. data.urls (alternatieve key)
+        //   3. data.accounts[].(published_url|post_url|url|permalink)
+        //   4. data.url (single-channel top-level)
+        // De per-channel mapping (voor `published_urls` veld op de SocialPost)
+        // wordt opgebouwd uit alles wat we vinden.
+        $publishedUrls = $this->mergePublishedUrls(
+            $publishedUrls,
+            $this->normalizePublishedUrls($data['urls'] ?? []),
+            $this->extractUrlsFromAccounts($data['accounts'] ?? [])
+        );
+
         $resolvedUrl = $post->post_url
-            ?? (is_string($data['url'] ?? null) && $data['url'] !== '' ? $data['url'] : null)
-            ?? $this->firstUrl($publishedUrls);
+            ?? $this->firstUrl($publishedUrls)
+            ?? (is_string($data['url'] ?? null) && $data['url'] !== '' ? $data['url'] : null);
+
+        // Als we hier zijn (status=published/completed) maar geen URL hebben
+        // gevonden in een herkende shape, log de top-level keys + accounts
+        // shape zodat we kunnen zien waar Omnisocials de URL nu plaatst.
+        if (! $resolvedUrl) {
+            Log::info("[omnisocials:sync] post #{$post->id} posted maar geen URL gevonden", [
+                'top_level_keys' => array_keys($data),
+                'accounts_sample' => $this->sampleAccountsShape($data['accounts'] ?? []),
+                'published_urls_raw' => $data['published_urls'] ?? null,
+                'urls_raw' => $data['urls'] ?? null,
+            ]);
+        }
 
         if (! empty($errors)) {
             $failedPlatforms = array_keys($errors);
@@ -216,6 +239,113 @@ class SocialPostStatusSyncer
         $first = reset($publishedUrls);
 
         return is_string($first) ? $first : null;
+    }
+
+    /**
+     * Voegt meerdere URL-bronnen samen tot één per-channel dict. Latere
+     * bronnen overschrijven eerdere alleen als de eerdere geen URL had.
+     *
+     * @param  array<string, string>  ...$sources
+     * @return array<string, string>
+     */
+    private function mergePublishedUrls(array ...$sources): array
+    {
+        $merged = [];
+        foreach ($sources as $source) {
+            foreach ($source as $key => $url) {
+                if (! isset($merged[$key]) || $merged[$key] === '') {
+                    $merged[$key] = $url;
+                }
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
+     * Pakt URLs uit een Omnisocials `accounts` array. Per account kijken we
+     * naar veldnamen die we in vergelijkbare APIs zijn tegengekomen:
+     * `published_url`, `post_url`, `permalink`, `url`. De key in de
+     * resulterende dict is bij voorkeur het platform (instagram, facebook),
+     * met een fallback op het account-id zodat we nooit een collision krijgen.
+     *
+     * @param  mixed  $accounts
+     * @return array<string, string>
+     */
+    private function extractUrlsFromAccounts(mixed $accounts): array
+    {
+        if (! is_array($accounts) || empty($accounts)) {
+            return [];
+        }
+
+        $urls = [];
+        foreach ($accounts as $platformKey => $account) {
+            // Een account kan op verschillende manieren zijn opgemaakt:
+            //   array van objecten:  [{ "platform": "facebook", "url": "..." }, ...]
+            //   dict per platform:    { "facebook": { "url": "..." }, ... }
+            //   dict met booleans:    { "facebook": true, ... }   (geen URL hier)
+            //   string url direct:    { "facebook": "https://..." }
+            if (is_string($account) && str_starts_with($account, 'http')) {
+                $urls[(string) $platformKey] = $account;
+
+                continue;
+            }
+
+            if (! is_array($account)) {
+                continue;
+            }
+
+            $url = null;
+            foreach (['published_url', 'post_url', 'permalink', 'url', 'link'] as $field) {
+                if (isset($account[$field]) && is_string($account[$field]) && $account[$field] !== '') {
+                    $url = $account[$field];
+                    break;
+                }
+            }
+
+            if (! $url) {
+                continue;
+            }
+
+            $key = (string) ($account['platform'] ?? $account['channel'] ?? $platformKey);
+            if ($key === '' || isset($urls[$key])) {
+                $key = (string) ($account['id'] ?? count($urls));
+            }
+
+            $urls[$key] = $url;
+        }
+
+        return $urls;
+    }
+
+    /**
+     * Bouwt een korte representatie van de accounts-array voor debug-logging
+     * zonder de hele payload (kan groot zijn). Per account: platform/id +
+     * de top-level keys zodat we direct zien welke veldnamen aanwezig zijn.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function sampleAccountsShape(mixed $accounts): array
+    {
+        if (! is_array($accounts) || empty($accounts)) {
+            return [];
+        }
+
+        $sample = [];
+        foreach (array_slice($accounts, 0, 3) as $account) {
+            if (! is_array($account)) {
+                $sample[] = ['type' => gettype($account)];
+
+                continue;
+            }
+            $sample[] = [
+                'platform' => $account['platform'] ?? null,
+                'id' => $account['id'] ?? null,
+                'keys' => array_keys($account),
+            ];
+        }
+
+        return $sample;
     }
 
     private function normalizePublishedUrls(mixed $raw): array
