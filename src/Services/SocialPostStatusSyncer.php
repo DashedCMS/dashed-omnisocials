@@ -124,20 +124,38 @@ class SocialPostStatusSyncer
             return 'updated:partially_posted';
         }
 
-        // Already-posted maar nog ontbrekende URL: alleen URL bijwerken zodra
-        // Omnisocials de published-data heeft. Verder geen update om de
-        // bestaande posted_at / posted_at_per_channel niet te overschrijven.
+        // Already-posted maar nog ontbrekende URLs: vul aan zodra Omnisocials
+        // ze heeft. Werkt zowel voor het algemene post_url als voor nieuwe
+        // channel-slugs die nog niet in published_urls stonden. posted_at /
+        // posted_at_per_channel laten we onaangeroerd zodat de oorspronkelijke
+        // tijdstempels behouden blijven.
         if ($post->status === 'posted') {
-            if (! $post->post_url && $resolvedUrl) {
-                $post->update([
-                    'post_url' => $resolvedUrl,
-                    'published_urls' => ! empty($publishedUrls) ? $publishedUrls : $post->published_urls,
+            $existingUrls = is_array($post->published_urls) ? $post->published_urls : [];
+            $mergedUrls = $this->mergePublishedUrls($existingUrls, $publishedUrls);
+            $newKeys = array_diff(array_keys($mergedUrls), array_keys($existingUrls));
+            $needsUrlUpdate = ! $post->post_url && $resolvedUrl;
+
+            if (! empty($newKeys) || $needsUrlUpdate) {
+                $update = [
                     'external_data' => array_merge($post->external_data ?? [], [
                         'last_sync_payload' => $data,
                     ]),
-                ]);
+                ];
 
-                Log::info("[omnisocials:sync] post #{$post->id} backfilled post_url");
+                if (! empty($newKeys)) {
+                    $update['published_urls'] = $mergedUrls;
+                }
+
+                if ($needsUrlUpdate) {
+                    $update['post_url'] = $resolvedUrl;
+                }
+
+                $post->update($update);
+
+                Log::info("[omnisocials:sync] post #{$post->id} backfilled URLs", [
+                    'new_keys' => array_values($newKeys),
+                    'post_url_set' => $needsUrlUpdate,
+                ]);
 
                 return 'updated:url';
             }

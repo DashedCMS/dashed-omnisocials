@@ -20,20 +20,13 @@ class SyncSocialPostStatusesCommand extends Command
     {
         // Selecteer posts die nog moeten worden gepolld:
         // - alles in een transient state (scheduled/publishing/partially_posted)
-        // - én alles wat al op 'posted' staat maar nog geen post_url heeft
-        //   (Omnisocials levert published_urls/url soms pas een sync-cycle later
-        //   aan, vooral bij multi-channel; we polleren door totdat we 'm hebben).
+        // - én alles wat al op 'posted' staat maar waar nog niet álle channel-
+        //   slug URLs zijn ingevuld in published_urls (Omnisocials levert URLs
+        //   soms per channel staggered aan, dus we blijven polleren tot
+        //   iedere channel-slug uit channels een URL heeft).
         $query = SocialPost::withoutGlobalScopes()
             ->whereNotNull('external_id')
-            ->where(function ($q) {
-                $q->whereIn('status', ['scheduled', 'publishing', 'partially_posted'])
-                    ->orWhere(function ($qq) {
-                        $qq->where('status', 'posted')
-                            ->where(function ($qqq) {
-                                $qqq->whereNull('post_url')->orWhere('post_url', '');
-                            });
-                    });
-            })
+            ->whereIn('status', ['scheduled', 'publishing', 'partially_posted', 'posted'])
             ->orderByRaw('last_status_sync_at IS NULL DESC')
             ->orderBy('last_status_sync_at');
 
@@ -45,6 +38,34 @@ class SyncSocialPostStatusesCommand extends Command
 
         $limit = (int) $this->option('limit');
         $posts = $query->limit($limit)->get();
+
+        // Skip 'posted' posts waarvan álle channel-slugs al een URL hebben in
+        // published_urls. Transient-state posts (scheduled/publishing/...) syncen
+        // we altijd ongeacht URL-volledigheid, want daar gaat 't om de status
+        // overgang.
+        $posts = $posts->filter(function (SocialPost $post): bool {
+            if ($post->status !== 'posted') {
+                return true;
+            }
+
+            $channels = is_array($post->channels) ? $post->channels : [];
+            if (empty($channels)) {
+                return false;
+            }
+
+            $urls = is_array($post->published_urls) ? $post->published_urls : [];
+            foreach ($channels as $slug) {
+                if (! is_string($slug) || $slug === '') {
+                    continue;
+                }
+                $url = $urls[$slug] ?? null;
+                if (! is_string($url) || $url === '') {
+                    return true;
+                }
+            }
+
+            return false;
+        })->values();
 
         if ($posts->isEmpty()) {
             $this->info('No pending posts to sync.');

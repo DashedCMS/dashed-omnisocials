@@ -2,6 +2,12 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.1.7 - 2026-05-08
+
+### Changed
+- `SyncSocialPostStatusesCommand` query selecteert nu álle posts met `status='posted'` (mits external_id), en filtert daarna in PHP de posts weg waarvan iedere channel-slug uit `channels` al een URL in `published_urls` heeft. Voorheen werden alleen posts met een leeg algemeen `post_url`-veld opgepikt, waardoor multi-channel posts waarvan bv. de Facebook-URL al binnen was maar de Instagram-URL nog niet, niet meer werden gepolld.
+- `SocialPostStatusSyncer::applyPosted()` voor reeds-posted posts: merged nu nieuwe URLs uit Omnisocials in `published_urls` (zonder bestaande te overschrijven), en zet `post_url` zodra die nog leeg was. Loggen we welke nieuwe channel-keys zijn aangevuld.
+
 ## v4.1.6 - 2026-05-08
 
 ### Changed
