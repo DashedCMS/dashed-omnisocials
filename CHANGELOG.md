@@ -2,6 +2,11 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.1.6 - 2026-05-08
+
+### Changed
+- `SocialPostStatusSyncer::applyPosted()` schrijft `published_urls` nu zowel onder Omnisocials' platform-keys (`facebook`, `instagram`, ...) als onder de bijbehorende channel-slugs uit `SocialPost.channels` (`facebook_page`, `instagram_feed`, `facebook_group`, ...). Voorheen kon het edit-form van `dashed-marketing` v4.19.0+ — dat bindt op `published_urls.{channel_slug}` — de URL niet ophalen omdat de keys niet matchten. Resolutie via `ChannelPlatformMapper`.
+
 ## v4.1.5 - 2026-05-08
 
 ### Changed

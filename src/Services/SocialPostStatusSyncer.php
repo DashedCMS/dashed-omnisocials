@@ -6,8 +6,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedOmnisocials\Jobs\RetryFailedPlatformsJob;
 use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
+use Dashed\DashedOmnisocials\Jobs\RetryFailedPlatformsJob;
+use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
 
 class SocialPostStatusSyncer
 {
@@ -70,6 +71,15 @@ class SocialPostStatusSyncer
             $this->normalizePublishedUrls($data['urls'] ?? []),
             $this->extractUrlsFromAccounts($data['accounts'] ?? [])
         );
+
+        // Omnisocials levert URLs terug onder platform-keys (facebook,
+        // instagram, ...) terwijl SocialPost.channels channel-type slugs
+        // gebruikt (facebook_page, facebook_group, instagram_feed, ...).
+        // Spiegel iedere platform-URL ook onder de matchende channel-slugs
+        // zodat de admin-form (die op channel-slug bindt) de URL correct
+        // pre-vult, en eventuele tools die nog op platform-niveau lezen
+        // blijven werken.
+        $publishedUrls = $this->expandUrlsToChannelSlugs($publishedUrls, $post);
 
         $resolvedUrl = $post->post_url
             ?? $this->firstUrl($publishedUrls)
@@ -239,6 +249,36 @@ class SocialPostStatusSyncer
         $first = reset($publishedUrls);
 
         return is_string($first) ? $first : null;
+    }
+
+    /**
+     * Spiegelt platform-keys (facebook, instagram, ...) naar de channel-slugs
+     * die op SocialPost.channels staan (facebook_page, facebook_group,
+     * instagram_feed, ...). De originele platform-keys blijven bestaan zodat
+     * tools die op platform-niveau lezen niet breken.
+     *
+     * @param  array<string, string>  $urls
+     * @return array<string, string>
+     */
+    private function expandUrlsToChannelSlugs(array $urls, SocialPost $post): array
+    {
+        $channels = is_array($post->channels) ? $post->channels : [];
+        if (empty($channels) || empty($urls)) {
+            return $urls;
+        }
+
+        foreach ($channels as $slug) {
+            if (! is_string($slug) || $slug === '' || isset($urls[$slug])) {
+                continue;
+            }
+
+            $platform = ChannelPlatformMapper::toOmnisocials($slug);
+            if ($platform && isset($urls[$platform]) && is_string($urls[$platform])) {
+                $urls[$slug] = $urls[$platform];
+            }
+        }
+
+        return $urls;
     }
 
     /**
