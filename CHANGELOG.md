@@ -2,6 +2,12 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.1.4 - 2026-05-08
+
+### Changed
+- Sync-command pickt nu ook posts op die al `posted` zijn maar nog geen `post_url` hebben. Voorheen was de query strikt `whereIn('status', ['scheduled', 'publishing', 'partially_posted'])` waardoor een post die snel op `posted` belandde maar zonder URL, nooit meer werd gepolld.
+- `SocialPostStatusSyncer::applyPosted()` heeft een nieuwe code-path: voor reeds-`posted` posts zonder `post_url` schrijft de syncer alleen de URL (en `published_urls` als beschikbaar) bij — `posted_at` en `posted_at_per_channel` blijven onaangeroerd. Nieuwe stat-key `updated:url` in CLI-output van het sync-command.
+
 ## v4.1.3 - 2026-05-08
 
 ### Fixed

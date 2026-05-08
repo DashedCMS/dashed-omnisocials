@@ -91,7 +91,24 @@ class SocialPostStatusSyncer
             return 'updated:partially_posted';
         }
 
+        // Already-posted maar nog ontbrekende URL: alleen URL bijwerken zodra
+        // Omnisocials de published-data heeft. Verder geen update om de
+        // bestaande posted_at / posted_at_per_channel niet te overschrijven.
         if ($post->status === 'posted') {
+            if (! $post->post_url && $resolvedUrl) {
+                $post->update([
+                    'post_url' => $resolvedUrl,
+                    'published_urls' => ! empty($publishedUrls) ? $publishedUrls : $post->published_urls,
+                    'external_data' => array_merge($post->external_data ?? [], [
+                        'last_sync_payload' => $data,
+                    ]),
+                ]);
+
+                Log::info("[omnisocials:sync] post #{$post->id} backfilled post_url");
+
+                return 'updated:url';
+            }
+
             return 'noop:already-posted';
         }
 

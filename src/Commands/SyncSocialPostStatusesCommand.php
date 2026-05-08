@@ -2,10 +2,10 @@
 
 namespace Dashed\DashedOmnisocials\Commands;
 
-use Dashed\DashedMarketing\Models\SocialPost;
-use Dashed\DashedOmnisocials\Services\SocialPostStatusSyncer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Dashed\DashedMarketing\Models\SocialPost;
+use Dashed\DashedOmnisocials\Services\SocialPostStatusSyncer;
 
 class SyncSocialPostStatusesCommand extends Command
 {
@@ -17,9 +17,22 @@ class SyncSocialPostStatusesCommand extends Command
 
     public function handle(SocialPostStatusSyncer $syncer): int
     {
+        // Selecteer posts die nog moeten worden gepolld:
+        // - alles in een transient state (scheduled/publishing/partially_posted)
+        // - én alles wat al op 'posted' staat maar nog geen post_url heeft
+        //   (Omnisocials levert published_urls/url soms pas een sync-cycle later
+        //   aan, vooral bij multi-channel; we polleren door totdat we 'm hebben).
         $query = SocialPost::withoutGlobalScopes()
             ->whereNotNull('external_id')
-            ->whereIn('status', ['scheduled', 'publishing', 'partially_posted'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['scheduled', 'publishing', 'partially_posted'])
+                    ->orWhere(function ($qq) {
+                        $qq->where('status', 'posted')
+                            ->where(function ($qqq) {
+                                $qqq->whereNull('post_url')->orWhere('post_url', '');
+                            });
+                    });
+            })
             ->orderByRaw('last_status_sync_at IS NULL DESC')
             ->orderBy('last_status_sync_at');
 
@@ -40,7 +53,7 @@ class SyncSocialPostStatusesCommand extends Command
 
         $this->info("Syncing {$posts->count()} post(s)");
 
-        $stats = ['updated:posted' => 0, 'updated:partially_posted' => 0, 'updated:failed' => 0, 'noop:pending' => 0, 'noop:already-posted' => 0, 'noop:already-failed' => 0, 'noop:unknown-status' => 0, 'error:api' => 0, 'skipped:no-external-id' => 0];
+        $stats = ['updated:posted' => 0, 'updated:url' => 0, 'updated:partially_posted' => 0, 'updated:failed' => 0, 'updated:scheduled' => 0, 'noop:pending' => 0, 'noop:already-posted' => 0, 'noop:already-failed' => 0, 'noop:unknown-status' => 0, 'error:api' => 0, 'skipped:no-external-id' => 0];
 
         foreach ($posts as $post) {
             try {
