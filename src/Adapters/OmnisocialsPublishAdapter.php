@@ -2,16 +2,16 @@
 
 namespace Dashed\DashedOmnisocials\Adapters;
 
-use Dashed\DashedMarketing\Contracts\PublishingAdapter;
-use Dashed\DashedMarketing\DTOs\PostStatus;
-use Dashed\DashedMarketing\DTOs\PublishResult;
-use Dashed\DashedMarketing\Models\SocialChannel;
-use Dashed\DashedMarketing\Models\SocialPost;
-use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
-use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Dashed\DashedMarketing\DTOs\PostStatus;
+use Dashed\DashedMarketing\Models\SocialPost;
+use Dashed\DashedMarketing\DTOs\PublishResult;
+use Dashed\DashedMarketing\Models\SocialChannel;
+use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
+use Dashed\DashedMarketing\Contracts\PublishingAdapter;
+use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
+use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 
 class OmnisocialsPublishAdapter implements PublishingAdapter
 {

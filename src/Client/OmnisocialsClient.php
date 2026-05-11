@@ -2,12 +2,12 @@
 
 namespace Dashed\DashedOmnisocials\Client;
 
-use Dashed\DashedCore\Models\Customsetting;
-use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
-use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\PendingRequest;
+use Dashed\DashedCore\Models\Customsetting;
+use Illuminate\Http\Client\RequestException;
+use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 
 class OmnisocialsClient
 {

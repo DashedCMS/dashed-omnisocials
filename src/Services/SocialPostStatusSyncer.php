@@ -6,9 +6,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 use Dashed\DashedOmnisocials\Jobs\RetryFailedPlatformsJob;
 use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
+use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 
 class SocialPostStatusSyncer
 {
@@ -357,6 +357,7 @@ class SocialPostStatusSyncer
             foreach (['published_url', 'post_url', 'permalink', 'url', 'link'] as $field) {
                 if (isset($account[$field]) && is_string($account[$field]) && $account[$field] !== '') {
                     $url = $account[$field];
+
                     break;
                 }
             }

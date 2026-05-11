@@ -2,16 +2,16 @@
 
 namespace Dashed\DashedOmnisocials;
 
-use Dashed\DashedMarketing\Managers\PublishingAdapterRegistry;
-use Dashed\DashedOmnisocials\Adapters\OmnisocialsPublishAdapter;
-use Dashed\DashedOmnisocials\Commands\RefreshAnalyticsCommand;
+use Spatie\LaravelPackageTools\Package;
+use Illuminate\Console\Scheduling\Schedule;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Dashed\DashedOmnisocials\Commands\SmokeTestCommand;
 use Dashed\DashedOmnisocials\Commands\SyncAccountsCommand;
+use Dashed\DashedMarketing\Managers\PublishingAdapterRegistry;
+use Dashed\DashedOmnisocials\Commands\RefreshAnalyticsCommand;
+use Dashed\DashedOmnisocials\Adapters\OmnisocialsPublishAdapter;
 use Dashed\DashedOmnisocials\Commands\SyncSocialPostStatusesCommand;
 use Dashed\DashedOmnisocials\Filament\Pages\Settings\OmnisocialsSettingsPage;
-use Illuminate\Console\Scheduling\Schedule;
-use Spatie\LaravelPackageTools\Package;
-use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class DashedOmnisocialsServiceProvider extends PackageServiceProvider
 {
@@ -46,7 +46,7 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
         PublishingAdapterRegistry::register('omnisocials', OmnisocialsPublishAdapter::class, 'Omnisocials');
 
         cms()->builder('plugins', [
-            new DashedOmnisocialsPlugin,
+            new DashedOmnisocialsPlugin(),
         ]);
 
         cms()->registerSettingsPage(

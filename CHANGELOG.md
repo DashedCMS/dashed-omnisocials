@@ -2,6 +2,11 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.1.8 - 2026-05-11
+
+### Changed
+- Pint-pass: import-volgorde + `new class () extends Migration`-syntax conform PHP-CS-Fixer profile. Geen gedragsverandering.
+
 ## v4.1.7 - 2026-05-08
 
 ### Changed

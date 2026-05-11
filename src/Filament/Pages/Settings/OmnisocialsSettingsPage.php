@@ -2,20 +2,20 @@
 
 namespace Dashed\DashedOmnisocials\Filament\Pages\Settings;
 
-use Dashed\DashedCore\Classes\Sites;
-use Dashed\DashedCore\Models\Customsetting;
-use Dashed\DashedCore\Traits\HasSettingsPermission;
-use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
-use Dashed\DashedOmnisocials\Jobs\SyncOmnisocialsAccountsJob;
+use Filament\Pages\Page;
 use Filament\Actions\Action;
+use Filament\Schemas\Schema;
+use Dashed\DashedCore\Classes\Sites;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
-use Filament\Schemas\Schema;
+use Dashed\DashedCore\Models\Customsetting;
+use Dashed\DashedCore\Traits\HasSettingsPermission;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
+use Dashed\DashedOmnisocials\Jobs\SyncOmnisocialsAccountsJob;
 
 class OmnisocialsSettingsPage extends Page implements HasSchemas
 {
@@ -44,7 +44,7 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
             ->icon('heroicon-o-signal')
             ->color('info')
             ->action(function () {
-                $client = new OmnisocialsClient;
+                $client = new OmnisocialsClient();
 
                 if (! $client->isConfigured()) {
                     Notification::make()
