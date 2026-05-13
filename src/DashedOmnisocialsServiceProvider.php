@@ -32,15 +32,17 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
 
     public function bootingPackage(): void
     {
-        cms()->registerIntegration([
-            'slug' => 'omnisocials',
-            'label' => 'Omnisocials',
-            'icon' => 'heroicon-o-megaphone',
-            'category' => 'social',
-            'settings_page' => \Dashed\DashedOmnisocials\Filament\Pages\Settings\OmnisocialsSettingsPage::class,
-            'health_check' => fn (?string $siteId = null) => \Dashed\DashedCore\Integrations\IntegrationHealth::fromSettings(['omnisocials_api_key'], $siteId, 'API key ontbreekt'),
-            'package' => 'dashed-omnisocials',
-        ]);
+        if (method_exists(cms(), 'registerIntegration')) {
+            cms()->registerIntegration([
+                'slug' => 'omnisocials',
+                'label' => 'Omnisocials',
+                'icon' => 'heroicon-o-megaphone',
+                'category' => 'social',
+                'settings_page' => \Dashed\DashedOmnisocials\Filament\Pages\Settings\OmnisocialsSettingsPage::class,
+                'health_check' => fn (?string $siteId = null) => \Dashed\DashedCore\Integrations\IntegrationHealth::fromSettings(['omnisocials_api_key'], $siteId, 'API key ontbreekt'),
+                'package' => 'dashed-omnisocials',
+            ]);
+        }
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
