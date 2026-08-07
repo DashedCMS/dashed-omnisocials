@@ -40,7 +40,7 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
     public function testConnectionAction(): Action
     {
         return Action::make('testConnection')
-            ->label('Test verbinding')
+            ->label(__('Test verbinding'))
             ->icon('heroicon-o-signal')
             ->color('info')
             ->action(function () {
@@ -48,7 +48,7 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
 
                 if (! $client->isConfigured()) {
                     Notification::make()
-                        ->title('Geen API key ingesteld')
+                        ->title(__('Geen API key ingesteld'))
                         ->danger()
                         ->send();
 
@@ -60,13 +60,13 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
                     $count = count($accounts['data'] ?? $accounts);
 
                     Notification::make()
-                        ->title('Verbinding geslaagd')
-                        ->body("{$count} account(s) gevonden.")
+                        ->title(__('Verbinding geslaagd'))
+                        ->body(__(':aantal account(s) gevonden.', ['aantal' => $count]))
                         ->success()
                         ->send();
                 } catch (\Throwable $e) {
                     Notification::make()
-                        ->title('Verbinding mislukt')
+                        ->title(__('Verbinding mislukt'))
                         ->body($e->getMessage())
                         ->danger()
                         ->send();
@@ -77,15 +77,15 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
     public function syncAccountsAction(): Action
     {
         return Action::make('syncAccounts')
-            ->label('Sync accounts')
+            ->label(__('Sync accounts'))
             ->icon('heroicon-o-arrow-path')
             ->color('primary')
             ->action(function () {
                 SyncOmnisocialsAccountsJob::dispatch();
 
                 Notification::make()
-                    ->title('Account sync gestart')
-                    ->body('De accounts worden op de achtergrond gesynchroniseerd.')
+                    ->title(__('Account sync gestart'))
+                    ->body(__('De accounts worden op de achtergrond gesynchroniseerd.'))
                     ->success()
                     ->send();
             });
@@ -94,17 +94,17 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
     public function form(Schema $schema): Schema
     {
         return $schema->schema([
-            Section::make('API configuratie')
+            Section::make(__('API configuratie'))
                 ->schema([
                     Actions::make([
                         $this->testConnectionAction(),
                         $this->syncAccountsAction(),
                     ]),
                     TextInput::make('omnisocials_api_key')
-                        ->label('API key')
+                        ->label(__('API key'))
                         ->password()
                         ->revealable()
-                        ->helperText('De API key van je Omnisocials account.'),
+                        ->helperText(__('De API key van je Omnisocials account.')),
                 ]),
         ])->statePath('data');
     }
@@ -118,7 +118,7 @@ class OmnisocialsSettingsPage extends Page implements HasSchemas
         }
 
         Notification::make()
-            ->title('Omnisocials instellingen opgeslagen')
+            ->title(__('Omnisocials instellingen opgeslagen'))
             ->success()
             ->send();
 
