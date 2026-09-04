@@ -2,6 +2,14 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.4.0 - 2026-09-04
+
+### Added
+- `PostPayload` (Support): pure vertaling van `SocialPost::type` naar het Omnisocials-veld `type` (`post`, `story`, `reel`) en van alle `images` naar `media_urls.default` als slides in volgorde. Voorheen ging alleen `images[0]` mee en ontbrak `type`, waardoor een story of een post met meerdere afbeeldingen als losse feedpost met één afbeelding werd geplaatst.
+
+### Changed
+- `OmnisocialsPublishAdapter` stuurt `type` mee en gebruikt `PostPayload::mediaUrls()`; de per-platform ratio-afbeeldingen werken zoals voorheen.
+
 ## v4.1.8 - 2026-05-11
 
 ### Changed

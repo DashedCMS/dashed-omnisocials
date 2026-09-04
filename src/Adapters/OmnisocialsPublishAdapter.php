@@ -8,6 +8,7 @@ use Dashed\DashedMarketing\DTOs\PostStatus;
 use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedMarketing\DTOs\PublishResult;
 use Dashed\DashedMarketing\Models\SocialChannel;
+use Dashed\DashedOmnisocials\Support\PostPayload;
 use Dashed\DashedOmnisocials\Client\OmnisocialsClient;
 use Dashed\DashedMarketing\Contracts\PublishingAdapter;
 use Dashed\DashedOmnisocials\Support\ChannelPlatformMapper;
@@ -101,6 +102,7 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
             $payload = [
                 'accounts' => $accountIds,
                 'content' => $content,
+                'type' => PostPayload::type($post->type),
             ];
 
             if (! empty($mediaUrls)) {
@@ -184,32 +186,23 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
 
     private function buildMediaUrls(SocialPost $post, array $accounts): array
     {
-        $ratioImages = $post->ratio_images ?? [];
-        $defaultImages = $post->images ?? [];
-        $defaultUrl = $this->toAbsoluteUrl($defaultImages[0] ?? ($ratioImages['1:1'] ?? null));
+        $absolute = fn (?string $path) => $this->toAbsoluteUrl($path);
 
-        if (! $defaultUrl && empty($ratioImages)) {
-            return [];
-        }
+        $images = array_values(array_filter(array_map($absolute, $post->images ?? [])));
 
-        $media = [];
-
-        if ($defaultUrl) {
-            $media['default'] = [$defaultUrl];
-        }
-
-        foreach ($accounts as $account) {
-            $slug = $account['channel']->slug;
-            $platform = $account['platform'];
-            $ratio = ChannelPlatformMapper::defaultRatio($slug);
-            $platformUrl = $this->toAbsoluteUrl($ratioImages[$ratio] ?? null);
-
-            if ($platformUrl && $platformUrl !== $defaultUrl) {
-                $media[$platform] = [$platformUrl];
+        $ratioImages = [];
+        foreach ($post->ratio_images ?? [] as $ratio => $path) {
+            if ($url = $absolute($path)) {
+                $ratioImages[$ratio] = $url;
             }
         }
 
-        return $media;
+        $platformRatios = [];
+        foreach ($accounts as $account) {
+            $platformRatios[$account['platform']] = ChannelPlatformMapper::defaultRatio($account['channel']->slug);
+        }
+
+        return PostPayload::mediaUrls($images, $ratioImages, $platformRatios);
     }
 
     private function toAbsoluteUrl(?string $path): ?string
