@@ -48,6 +48,13 @@ class SyncSocialPostStatusesCommand extends Command
                 return true;
             }
 
+            // Stories krijgen van Omnisocials doorgaans geen blijvende URL:
+            // zonder deze uitzondering blijft een gepubliceerde story voor
+            // altijd gepolld omdat published_urls nooit compleet raakt.
+            if ($post->type === 'story') {
+                return false;
+            }
+
             $channels = is_array($post->channels) ? $post->channels : [];
             if (empty($channels)) {
                 return false;

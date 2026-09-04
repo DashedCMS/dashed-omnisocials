@@ -2,6 +2,11 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.4.1 - 2026-09-04
+
+### Fixed
+- `SyncSocialPostStatusesCommand` blijft niet langer voor altijd pollen op een gepubliceerde story: stories krijgen van Omnisocials doorgaans geen blijvende `post_url`, waardoor de "posted maar URL ontbreekt"-selectie ze telkens opnieuw oppikte. Een `posted` post met `type = 'story'` telt nu als klaar; stories in een transient status (`scheduled`/`publishing`/`partially_posted`) worden onverminderd gepolld tot ze `posted` zijn.
+
 ## v4.4.0 - 2026-09-04
 
 ### Added
