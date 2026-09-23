@@ -43,7 +43,10 @@ class SocialPostStatusSyncer
         // volgende run). 'posted' staat hier ook in voor de zekerheid mocht
         // de API in de toekomst die alias gebruiken.
         $result = match ($externalStatus) {
-            'published', 'completed', 'posted' => $this->applyPosted($post, $data, $errors, $publishedUrls),
+            // 'warning' = op minstens één kanaal geplaatst, op een ander
+            // mislukt (bijv. de Instagram-daglimiet). Zonder deze regel viel
+            // dat in applyUnknown() en bleef de post eeuwig op 'publishing'.
+            'published', 'completed', 'posted', 'warning' => $this->applyPosted($post, $data, $errors, $publishedUrls),
             'failed' => $this->applyFailed($post, $data),
             'scheduled' => $this->applyScheduled($post, $data),
             'draft', 'pending', 'processing', 'posting' => 'noop:pending',
@@ -115,11 +118,25 @@ class SocialPostStatusSyncer
                 $update['published_urls'] = $publishedUrls;
             }
 
+            // Een nieuwe poging alleen als de vorige minstens een uur geleden
+            // was. De sync draait elk kwartier en een daglimiet van het
+            // platform is dan nog niet voorbij; zonder deze rem stuurden we
+            // vier keer per uur dezelfde post opnieuw in.
+            $laatstePoging = $post->external_data['last_retry_at'] ?? null;
+            $magOpnieuw = ! $laatstePoging
+                || Carbon::parse($laatstePoging)->addHour()->isPast();
+
+            if ($magOpnieuw) {
+                $update['external_data']['last_retry_at'] = now()->toIso8601String();
+            }
+
             $post->update($update);
 
-            RetryFailedPlatformsJob::dispatch($post)->delay(now()->addMinute());
+            if ($magOpnieuw) {
+                RetryFailedPlatformsJob::dispatch($post)->delay(now()->addMinute());
+            }
 
-            Log::info("[omnisocials:sync] post #{$post->id} partially posted", ['failed' => $failedPlatforms]);
+            Log::info("[omnisocials:sync] post #{$post->id} partially posted", ['failed' => $failedPlatforms, 'retry' => $magOpnieuw]);
 
             return 'updated:partially_posted';
         }

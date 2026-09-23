@@ -2,6 +2,12 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.4.2 - 2026-09-23
+
+### Fixed
+- **Status `warning` bleef onbehandeld.** Omnisocials meldt een post die op het ene kanaal geplaatst is en op het andere strandde (bijvoorbeeld de Instagram-daglimiet) als `warning`. Die status viel in `applyUnknown()`, waardoor de post voor altijd op `publishing` bleef staan en nooit werd opgepakt om te herplannen. `warning` loopt nu via `applyPosted()` en levert dus `partially_posted` met `failed_platforms` op.
+- **Niet elk kwartier opnieuw proberen.** `RetryFailedPlatformsJob` werd bij elke sync opnieuw gedispatcht zolang er een fout op een kanaal stond; bij een daglimiet was dat vier keer per uur zinloos opnieuw insturen. Er zit nu minstens een uur tussen twee pogingen (`external_data.last_retry_at`).
+
 ## v4.4.1 - 2026-09-04
 
 ### Fixed
