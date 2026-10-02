@@ -1,1 +1,17 @@
-{}
+{
+    ":aantal account(s) gevonden.": ":aantal account(s) found.",
+    "Account sync gestart": "Account sync started",
+    "API configuratie": "API configuration",
+    "API key": "API key",
+    "De accounts worden op de achtergrond gesynchroniseerd.": "The accounts are being synchronized in the background.",
+    "De API key van je Omnisocials account.": "The API key of your Omnisocials account.",
+    "Geen API key ingesteld": "No API key set",
+    "Omnisocials": "Omnisocials",
+    "Omnisocials API koppeling en account synchronisatie": "Omnisocials API integration and account synchronization",
+    "Omnisocials instellingen": "Omnisocials settings",
+    "Omnisocials instellingen opgeslagen": "Omnisocials settings saved",
+    "Sync accounts": "Sync accounts",
+    "Test verbinding": "Test connection",
+    "Verbinding geslaagd": "Connection successful",
+    "Verbinding mislukt": "Connection failed"
+}
