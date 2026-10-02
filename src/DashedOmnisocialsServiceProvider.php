@@ -27,7 +27,8 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
                 RefreshAnalyticsCommand::class,
                 SyncSocialPostStatusesCommand::class,
             ])
-            ->name(self::$name);
+            ->name(self::$name)
+            ->hasTranslations();
     }
 
     public function bootingPackage(): void
