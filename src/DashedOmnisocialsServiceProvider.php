@@ -33,6 +33,28 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
 
     public function bootingPackage(): void
     {
+        // Gekoppelde kanalen voeden sameAs op het bedrijfsschema (dashed-core).
+        if (class_exists(\Dashed\DashedCore\Classes\Seo\BusinessProfile::class)) {
+            cms()->builder('organizationProfileSettings', ['omnisocials_accounts']);
+            cms()->builder('organizationSameAs', [function (string $siteId): array {
+                $raw = \Dashed\DashedCore\Models\Customsetting::get('omnisocials_accounts', $siteId);
+                $accounts = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: []);
+                $urls = [];
+
+                foreach ($accounts as $account) {
+                    foreach (['url', 'profile_url', 'permalink', 'link'] as $field) {
+                        if (is_string($account[$field] ?? null) && str_starts_with($account[$field], 'https://')) {
+                            $urls[] = $account[$field];
+
+                            break;
+                        }
+                    }
+                }
+
+                return $urls;
+            }]);
+        }
+
         if (method_exists(cms(), 'registerIntegration')) {
             cms()->registerIntegration([
                 'slug' => 'omnisocials',
