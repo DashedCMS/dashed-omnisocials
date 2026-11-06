@@ -75,7 +75,7 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
             $schedule->command('dashed-omnisocials:sync-post-statuses')
                 ->everyFifteenMinutes()
                 ->withoutOverlapping(10)
-                ->runInBackground();
+                ->when(fn () => SyncSocialPostStatusesCommand::hasWork());
         });
 
         PublishingAdapterRegistry::register('omnisocials', OmnisocialsPublishAdapter::class, 'Omnisocials');

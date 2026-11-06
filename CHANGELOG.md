@@ -2,6 +2,11 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.5.3 - 2026-11-06
+
+### Changed
+- `sync-post-statuses` draait niet meer op de achtergrond en alleen als er posts te controleren zijn.
+
 ## v4.5.2 - 2026-11-06
 
 ### Fixed

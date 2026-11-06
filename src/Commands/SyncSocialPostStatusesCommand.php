@@ -16,7 +16,21 @@ class SyncSocialPostStatusesCommand extends Command
 
     protected $description = 'Poll Omnisocials API for status updates on pending social posts';
 
-    public function handle(SocialPostStatusSyncer $syncer): int
+    /**
+     * Snelle controle voor de scheduler, met dezelfde selectie als handle().
+     * De lazy collection stopt bij de eerste treffer. Lukt de query niet, dan
+     * draait het commando gewoon.
+     */
+    public static function hasWork(): bool
+    {
+        return rescue(
+            fn () => self::pendingQuery()->reorder()->cursor()->contains(fn (SocialPost $post) => self::needsSync($post)),
+            true,
+            false
+        );
+    }
+
+    private static function pendingQuery()
     {
         // Selecteer posts die nog moeten worden gepolld:
         // - alles in een transient state (scheduled/publishing/partially_posted)
@@ -24,7 +38,7 @@ class SyncSocialPostStatusesCommand extends Command
         //   slug URLs zijn ingevuld in published_urls (Omnisocials levert URLs
         //   soms per channel staggered aan, dus we blijven polleren tot
         //   iedere channel-slug uit channels een URL heeft).
-        $query = SocialPost::withoutGlobalScopes()
+        return SocialPost::withoutGlobalScopes()
             ->whereNotNull('external_id')
             ->whereIn('status', ['scheduled', 'publishing', 'partially_posted', 'posted'])
             // Stories krijgen van Omnisocials doorgaans geen blijvende URL: een
@@ -36,6 +50,11 @@ class SyncSocialPostStatusesCommand extends Command
             ->where(fn ($q) => $q->where('status', '!=', 'partially_posted')->orWhere('scheduled_at', '>=', now()->subDays(7)))
             ->orderByRaw('last_status_sync_at IS NULL DESC')
             ->orderBy('last_status_sync_at');
+    }
+
+    public function handle(SocialPostStatusSyncer $syncer): int
+    {
+        $query = self::pendingQuery();
 
         if ($postId = $this->option('post')) {
             $query = SocialPost::withoutGlobalScopes()
@@ -51,34 +70,9 @@ class SyncSocialPostStatusesCommand extends Command
         // published_urls. Transient-state posts (scheduled/publishing/...) syncen
         // we altijd ongeacht URL-volledigheid, want daar gaat 't om de status
         // overgang.
-        $posts = $query->cursor()->filter(function (SocialPost $post): bool {
-            if ($post->status !== 'posted') {
-                return true;
-            }
-
-            // Voor --post: de query hierboven sluit stories anders al uit.
-            if ($post->type === 'story') {
-                return false;
-            }
-
-            $channels = is_array($post->channels) ? $post->channels : [];
-            if (empty($channels)) {
-                return false;
-            }
-
-            $urls = is_array($post->published_urls) ? $post->published_urls : [];
-            foreach ($channels as $slug) {
-                if (! is_string($slug) || $slug === '') {
-                    continue;
-                }
-                $url = $urls[$slug] ?? null;
-                if (! is_string($url) || $url === '') {
-                    return true;
-                }
-            }
-
-            return false;
-        })->take($limit)->values()->collect();
+        $posts = $query->cursor()
+            ->filter(fn (SocialPost $post): bool => self::needsSync($post))
+            ->take($limit)->values()->collect();
 
         if ($posts->isEmpty()) {
             $this->info('No pending posts to sync.');
@@ -129,5 +123,35 @@ class SyncSocialPostStatusesCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private static function needsSync(SocialPost $post): bool
+    {
+        if ($post->status !== 'posted') {
+            return true;
+        }
+
+        // Voor --post: pendingQuery() sluit stories anders al uit.
+        if ($post->type === 'story') {
+            return false;
+        }
+
+        $channels = is_array($post->channels) ? $post->channels : [];
+        if (empty($channels)) {
+            return false;
+        }
+
+        $urls = is_array($post->published_urls) ? $post->published_urls : [];
+        foreach ($channels as $slug) {
+            if (! is_string($slug) || $slug === '') {
+                continue;
+            }
+            $url = $urls[$slug] ?? null;
+            if (! is_string($url) || $url === '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
