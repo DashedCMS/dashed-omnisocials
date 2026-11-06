@@ -11,6 +11,13 @@ use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 
 class OmnisocialsClient
 {
+    /**
+     * Seconden wachten op een schrijfactie. Omnisocials haalt bij het plaatsen
+     * de media op; een video duurt daardoor ruim langer dan de 30 seconden van
+     * een gewone aanroep. PublishSocialPostJob::$timeout moet hierboven liggen.
+     */
+    public const PUBLICEREN_TIMEOUT = 150;
+
     private string $apiKey;
 
     private string $baseUrl;
@@ -103,6 +110,28 @@ class OmnisocialsClient
             }, throw: false);
     }
 
+    /**
+     * Een schrijfactie gaat alleen opnieuw als Omnisocials hem zeker niet heeft
+     * uitgevoerd (429). Na een time-out of serverfout kan de post er toch staan:
+     * nog een keer insturen zette elke videostory dubbel online.
+     */
+    private function schrijfRequest(): PendingRequest
+    {
+        return Http::baseUrl($this->baseUrl)
+            ->withToken($this->apiKey)
+            ->acceptJson()
+            ->timeout(self::PUBLICEREN_TIMEOUT)
+            ->retry(
+                3,
+                fn (int $attempt, \Throwable $exception) => $exception instanceof RequestException
+                    ? ((int) ($exception->response->header('Retry-After') ?: 5)) * 1000
+                    : 0,
+                fn (\Throwable $exception) => $exception instanceof RequestException
+                    && $exception->response->status() === 429,
+                throw: false
+            );
+    }
+
     private function get(string $endpoint): array
     {
         return $this->handleResponse($this->request()->get($endpoint));
@@ -110,7 +139,7 @@ class OmnisocialsClient
 
     private function post(string $endpoint, array $data = []): array
     {
-        return $this->handleResponse($this->request()->post($endpoint, $data));
+        return $this->handleResponse($this->schrijfRequest()->post($endpoint, $data));
     }
 
     private function patch(string $endpoint, array $data = []): array

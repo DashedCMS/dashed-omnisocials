@@ -2,6 +2,13 @@
 
 All notable changes to `dashed-omnisocials` will be documented in this file.
 
+## v4.5.2 - 2026-11-06
+
+### Fixed
+- **Vastgelopen posts werden nooit meer gecontroleerd.** `SyncSocialPostStatusesCommand` pakte de 100 langst niet gecontroleerde posts en filterde geplaatste stories er pas daarna uit; zodra er 100 geplaatste stories waren, bleef er niets over en kreeg een nieuwe post maar één controle. De query sluit geplaatste stories nu zelf uit en de limiet telt pas na het filter.
+- **Geen dubbele post meer na een trage reactie.** Schrijfacties wachten 150 seconden en gaan alleen nog opnieuw na een 429. Bij een video deed Omnisocials er langer dan 30 seconden over, waarna de client dezelfde post nog een keer instuurde.
+- **Geen herplaatsing van oude posts.** Een mislukt kanaal wordt alleen binnen 24 uur na het geplande moment opnieuw geprobeerd, en een deels geplaatste post wordt na 7 dagen niet meer gepolld.
+
 ## v4.4.2 - 2026-09-23
 
 ### Fixed

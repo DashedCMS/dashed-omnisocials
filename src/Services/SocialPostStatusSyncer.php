@@ -12,6 +12,12 @@ use Dashed\DashedOmnisocials\Exceptions\OmnisocialsApiException;
 
 class SocialPostStatusSyncer
 {
+    /**
+     * Uren na het geplande moment dat een mislukt kanaal nog opnieuw mag. Een
+     * story leeft een dag; daarna is opnieuw plaatsen geen herstel meer.
+     */
+    public const OPNIEUW_BINNEN_UREN = 24;
+
     public function syncPost(SocialPost $post): string
     {
         if (! $post->external_id) {
@@ -125,6 +131,11 @@ class SocialPostStatusSyncer
             $laatstePoging = $post->external_data['last_retry_at'] ?? null;
             $magOpnieuw = ! $laatstePoging
                 || Carbon::parse($laatstePoging)->addHour()->isPast();
+
+            $moment = $post->scheduled_at ?? $post->created_at;
+            if ($moment && $moment->copy()->addHours(self::OPNIEUW_BINNEN_UREN)->isPast()) {
+                $magOpnieuw = false;
+            }
 
             if ($magOpnieuw) {
                 $update['external_data']['last_retry_at'] = now()->toIso8601String();

@@ -27,6 +27,13 @@ class SyncSocialPostStatusesCommand extends Command
         $query = SocialPost::withoutGlobalScopes()
             ->whereNotNull('external_id')
             ->whereIn('status', ['scheduled', 'publishing', 'partially_posted', 'posted'])
+            // Stories krijgen van Omnisocials doorgaans geen blijvende URL: een
+            // geplaatste story is klaar. Dat moet in de query: de limiet hieronder
+            // viel anders helemaal op oude stories en vastgelopen posts kwamen
+            // nooit meer aan de beurt.
+            ->where(fn ($q) => $q->where('status', '!=', 'posted')->orWhere('type', '!=', 'story')->orWhereNull('type'))
+            // Een kanaal dat na een week nog niet gelukt is, komt niet meer goed.
+            ->where(fn ($q) => $q->where('status', '!=', 'partially_posted')->orWhere('scheduled_at', '>=', now()->subDays(7)))
             ->orderByRaw('last_status_sync_at IS NULL DESC')
             ->orderBy('last_status_sync_at');
 
@@ -37,20 +44,19 @@ class SyncSocialPostStatusesCommand extends Command
         }
 
         $limit = (int) $this->option('limit');
-        $posts = $query->limit($limit)->get();
 
+        // Eerst filteren en dan pas beperken, zodat de limiet alleen telt voor
+        // posts die echt gecontroleerd worden.
         // Skip 'posted' posts waarvan álle channel-slugs al een URL hebben in
         // published_urls. Transient-state posts (scheduled/publishing/...) syncen
         // we altijd ongeacht URL-volledigheid, want daar gaat 't om de status
         // overgang.
-        $posts = $posts->filter(function (SocialPost $post): bool {
+        $posts = $query->cursor()->filter(function (SocialPost $post): bool {
             if ($post->status !== 'posted') {
                 return true;
             }
 
-            // Stories krijgen van Omnisocials doorgaans geen blijvende URL:
-            // zonder deze uitzondering blijft een gepubliceerde story voor
-            // altijd gepolld omdat published_urls nooit compleet raakt.
+            // Voor --post: de query hierboven sluit stories anders al uit.
             if ($post->type === 'story') {
                 return false;
             }
@@ -72,7 +78,7 @@ class SyncSocialPostStatusesCommand extends Command
             }
 
             return false;
-        })->values();
+        })->take($limit)->values()->collect();
 
         if ($posts->isEmpty()) {
             $this->info('No pending posts to sync.');

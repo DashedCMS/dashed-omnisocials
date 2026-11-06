@@ -4,6 +4,7 @@ namespace Dashed\DashedOmnisocials\Adapters;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Client\ConnectionException;
 use Dashed\DashedMarketing\DTOs\PostStatus;
 use Dashed\DashedMarketing\Models\SocialPost;
 use Dashed\DashedMarketing\DTOs\PublishResult;
@@ -148,6 +149,16 @@ class OmnisocialsPublishAdapter implements PublishingAdapter
             return new PublishResult(
                 success: false,
                 error: $e->getMessage(),
+            );
+        } catch (ConnectionException $e) {
+            Log::error('Omnisocials publish zonder antwoord', [
+                'post_id' => $post->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return new PublishResult(
+                success: false,
+                error: 'Geen antwoord van Omnisocials: de post kan toch geplaatst zijn. Controleer dat voordat je hem opnieuw probeert.',
             );
         } catch (\Throwable $e) {
             Log::error('Omnisocials publish unexpected error', [
