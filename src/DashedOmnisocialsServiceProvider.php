@@ -71,7 +71,7 @@ class DashedOmnisocialsServiceProvider extends PackageServiceProvider
 
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
-            $schedule->command('dashed-omnisocials:refresh-analytics')->dailyAt('03:00');
+            $schedule->command('dashed-omnisocials:refresh-analytics')->dailyAt(class_exists(\Dashed\DashedCore\Classes\ScheduleSpread::class) ? \Dashed\DashedCore\Classes\ScheduleSpread::at('03:00', 'refresh-analytics') : '03:00');
             $schedule->command('dashed-omnisocials:sync-post-statuses')
                 ->everyFifteenMinutes()
                 ->withoutOverlapping(10)
